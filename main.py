@@ -62,6 +62,18 @@ class FlowGraph:
                     print(f"{a} -> {b} | {e.flow}/{e.capacity}")
 
 
+def ford_fulkerson_dfs(g: FlowGraph):
+    ...
+
+def edmonds_karp(g: FlowGraph):
+    ...
+
+def capacity_scaling(g: FlowGraph):
+    ...
+
+def dinics(g: FlowGraph):
+    ...
+
 if __name__ == "__main__":
     g = FlowGraph()
 
