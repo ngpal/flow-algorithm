@@ -18,12 +18,6 @@ class FlowGraph:
     def add_node(self, id: int):
         ...
 
-    def dfs(self, start: int) -> list[int]:
-        ...
-
-    def bfs(self, start: int) -> list[int]:
-        ...
-
     def add_nodes(self, *ids):
         map(self.add_node, ids)
 
