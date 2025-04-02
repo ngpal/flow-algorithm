@@ -15,9 +15,26 @@ class FlowGraph:
     def __init__(self):
         self.graph = {}
 
-    def add_vertex(self, id: int):
-        self.graph[id] = {}
+    def add_node(self, id: int):
+        ...
+
+    def dfs(self, start: int) -> list[int]:
+        ...
+
+    def bfs(self, start: int) -> list[int]:
+        ...
+
+    def add_nodes(self, *ids):
+        map(self.add_node, ids)
+
+    def add_arc(self, a_id: int, b_id: int, capacity: int):
+        ...
 
     # Checks whether a node is a source O(V + E)
     def is_source(self, id: int) -> bool:
         return True
+
+    # Checks whether a node is a sink O(1)
+    def is_sink(self, id: int) -> bool:
+        return True
+
