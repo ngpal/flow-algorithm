@@ -62,17 +62,49 @@ class FlowGraph:
                     print(f"{a} -> {b} | {e.flow}/{e.capacity}")
 
 
-def ford_fulkerson_dfs(g: FlowGraph):
-    ...
-
-def edmonds_karp(g: FlowGraph):
-    ...
-
-def capacity_scaling(g: FlowGraph):
-    ...
-
 def dinics(g: FlowGraph):
-    ...
+    from collections import deque
+
+    source = next(iter(g.sources))
+    sink = next(iter(g.sinks))
+
+    level = {}
+
+    # Step 1: Build level graph using BFS
+    def bfs():
+        nonlocal level
+        level = {v: -1 for v in g.graph}
+        queue = deque([source])
+        level[source] = 0
+        while queue:
+            u = queue.popleft()
+            for v, arc in g.graph[u].items():
+                if level[v] == -1 and arc.remaining() > 0:
+                    level[v] = level[u] + 1
+                    queue.append(v)
+        return level[sink] != -1
+
+    # Step 2: DFS to send flow through level-respecting paths
+    def dfs(u, flow):
+        if u == sink:
+            return flow
+        for v, arc in g.graph[u].items():
+            if level.get(v, -1) == level[u] + 1 and arc.remaining() > 0:
+                pushed = dfs(v, min(flow, arc.remaining()))
+                if pushed > 0:
+                    arc.augment(pushed)
+                    return pushed
+        return 0
+
+    # Main loop
+    max_flow = 0
+    while bfs():  # while we can build level graph
+        while True:
+            pushed = dfs(source, float('inf'))
+            if pushed == 0:
+                break
+            max_flow += pushed
+    return max_flow
 
 if __name__ == "__main__":
     g = FlowGraph()
@@ -89,4 +121,6 @@ if __name__ == "__main__":
         (4, 5, 6),
     )
 
+    max_flow = dinics(g)
+    print("Max flow attained:", max_flow)
     g.print()
