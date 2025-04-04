@@ -1,97 +1,94 @@
-# Road represents a directed edge (road segment) with capacity (vehicle throughput)
 class Road:
     def __init__(self, capacity, residual=None):
-        self.capacity = capacity  # Max number of vehicles per time unit
-        self.residual = residual  # Backward road for residual capacity
-        self.flow = 0             # Current traffic on this road
+        self.capacity = capacity
+        self.residual = residual
+        self.flow = 0
 
     def is_residual(self):
         return self.capacity == 0
 
     def remaining(self):
-        return self.capacity - self.flow  # Remaining capacity
+        return self.capacity - self.flow
 
-    def is_full(self) -> bool:
+    def is_full(self):
         return self.remaining() == 0
 
-    def augment(self, flow: int):
-        # Push traffic forward and update the backward road
+    def augment(self, flow):
         self.flow += flow
         self.residual.flow -= flow
 
 
-# TrafficNetwork models the road network from housing to workplaces
 class TrafficNetwork:
     def __init__(self):
-        self.network = {}  # Adjacency list: {intersection: {neighbour: Road}}
+        self.network = {}
         self.housings = set()
         self.workplaces = set()
 
-    def add_road(self, from_intersection: int, to_intersection: int, capacity: int):
-        # Register nodes and their roles (housing or workplace)
-        if from_intersection not in self.network:
-            self.network[from_intersection] = {}
-            self.housings.add(from_intersection)
-        elif from_intersection in self.workplaces:
-            self.workplaces.remove(from_intersection)
+    def add_road(self, u, v, capacity):
+        if u not in self.network:
+            self.network[u] = {}
+        if v not in self.network:
+            self.network[v] = {}
 
-        if to_intersection not in self.network:
-            self.network[to_intersection] = {}
-            self.workplaces.add(to_intersection)
-        elif to_intersection in self.housings:
-            self.housings.remove(to_intersection)
+        # Create residual road
+        backward = Road(0)
+        forward = Road(capacity, backward)
+        backward.residual = forward
 
-        # Add forward and backward (residual) roads
-        self.network[to_intersection][from_intersection] = Road(0)
-        self.network[from_intersection][to_intersection] = Road(
-            capacity, self.network[to_intersection][from_intersection]
-        )
+        self.network[u][v] = forward
+        self.network[v][u] = backward
 
     def add_roads(self, *roads):
         for road in roads:
             self.add_road(*road)
 
-    def is_housing(self, id: int) -> bool:
-        return id in self.housings
+    def add_housing(self, node):
+        self.housings.add(node)
 
-    def is_workplace(self, id: int) -> bool:
-        return id in self.workplaces
+    def add_workplace(self, node):
+        self.workplaces.add(node)
 
     def print_status(self):
         print("Housings:", self.housings)
         print("Workplaces:", self.workplaces)
-        for a, neighbours in self.network.items():
-            for b, road in neighbours.items():
+        for u, edges in self.network.items():
+            for v, road in edges.items():
                 if not road.is_residual():
-                    print(f"{a} -> {b} | {road.flow}/{road.capacity}")
+                    print(f"{u} -> {v} | {road.flow}/{road.capacity}")
 
 
-# Dinic's algorithm to compute max traffic flow from housings to workplaces
 def compute_max_traffic_flow(city: TrafficNetwork):
     from collections import deque
 
-    source = next(iter(city.housings))
-    sink = next(iter(city.workplaces))
+    super_source = -1
+    super_sink = -2
+
+    city.network[super_source] = {}
+    city.network[super_sink] = {}
+
+    for housing in city.housings:
+        city.add_road(super_source, housing, float('inf'))
+
+    for workplace in city.workplaces:
+        city.add_road(workplace, super_sink, float('inf'))
 
     level = {}
 
-    # Step 1: Build level graph using BFS
     def bfs():
         nonlocal level
         level = {v: -1 for v in city.network}
-        queue = deque([source])
-        level[source] = 0
+        level[super_source] = 0
+        queue = deque([super_source])
         while queue:
             u = queue.popleft()
             for v, road in city.network[u].items():
                 if level[v] == -1 and road.remaining() > 0:
                     level[v] = level[u] + 1
                     queue.append(v)
-        return level[sink] != -1
+        return level[super_sink] != -1
 
-    # Step 2: DFS to push traffic through shortest valid routes
     def dfs(u, flow):
-        if u == sink:
+        if u == super_sink:
             return flow
         for v, road in city.network[u].items():
             if level.get(v, -1) == level[u] + 1 and road.remaining() > 0:
@@ -101,11 +98,10 @@ def compute_max_traffic_flow(city: TrafficNetwork):
                     return pushed
         return 0
 
-    # Main loop
     max_flow = 0
     while bfs():
         while True:
-            pushed = dfs(source, float('inf'))
+            pushed = dfs(super_source, float('inf'))
             if pushed == 0:
                 break
             max_flow += pushed
@@ -115,19 +111,26 @@ def compute_max_traffic_flow(city: TrafficNetwork):
 if __name__ == "__main__":
     city = TrafficNetwork()
 
-    # (from_intersection, to_intersection, capacity)
+    # register 3 housings (nodes 0, 1, 2)
+    city.add_housing(0)
+    city.add_housing(1)
+    city.add_housing(2)
+
+    # register 2 workplaces (nodes 6, 7)
+    city.add_workplace(6)
+    city.add_workplace(7)
+
     city.add_roads(
-        (0, 1, 3),
-        (0, 2, 7),
-        (2, 1, 5),
-        (1, 3, 3),
-        (1, 4, 4),
-        (2, 4, 3),
+        (0, 3, 3),
+        (1, 3, 2),
+        (2, 4, 4),
         (3, 4, 3),
         (3, 5, 2),
-        (4, 5, 6),
+        (4, 5, 3),
+        (5, 6, 3),
+        (5, 7, 2),
     )
 
     max_traffic = compute_max_traffic_flow(city)
-    print("Maximum traffic flow from housing to workplace:", max_traffic)
+    print("Maximum traffic flow from all housings to all workplaces:", max_traffic)
     city.print_status()
